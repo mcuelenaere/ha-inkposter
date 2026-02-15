@@ -328,11 +328,18 @@ async def async_send_command(
         # Read status before command to get the current msg_seq.
         raw_before = await client.read_gatt_char(BLE_STATUS_CHAR_UUID)
         status_before = decode_status(bytes(raw_before))
+        flags = parse_status_flags(status_before.status_original)
         _LOGGER.debug(
-            "BLE status before command: msg_seq=%d, model=%s",
+            "BLE status before command: msg_seq=%d, model=%s, secure_mode=%s",
             status_before.msg_seq,
             status_before.model_str,
+            flags.secure_mode,
         )
+
+        # If device is NOT in secure mode, use the default key
+        # (matching Android app behavior from BleCommandSender).
+        if not flags.secure_mode:
+            skey_hex = None
 
         # Build command with correct msg_seq if action is provided.
         if action is not None:
