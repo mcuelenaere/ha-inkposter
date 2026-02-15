@@ -282,10 +282,6 @@ async def async_read_status(
     from bleak_retry_connector import establish_connection
 
     client = await establish_connection(BleakClient, ble_device, ble_device.address)
-    try:
-        await client.pair()  # Some platforms need this; no-op if already paired.
-    except Exception:
-        pass
 
     try:
         raw = await client.read_gatt_char(BLE_STATUS_CHAR_UUID)
@@ -319,10 +315,9 @@ async def async_send_command(
     from bleak_retry_connector import establish_connection
 
     client = await establish_connection(BleakClient, ble_device, ble_device.address)
-    try:
-        await client.pair()
-    except Exception:
-        pass
+    # NOTE: Do NOT call client.pair() -- the Android app doesn't pair,
+    # and on macOS pairing enables link-layer encryption which corrupts
+    # writes from the device's perspective.
 
     try:
         # Read status before command to get the current msg_seq.
@@ -384,9 +379,10 @@ async def async_send_command(
         if command_bytes is None:
             raise ValueError("Either command_bytes or action must be provided")
 
-        # Write command (WRITE_TYPE_NO_RESPONSE).
+        # Write command. The Android app uses WRITE_TYPE_NO_RESPONSE, but
+        # on macOS CoreBluetooth, write-with-response is more reliable.
         await client.write_gatt_char(
-            BLE_COMMAND_CHAR_UUID, command_bytes, response=False
+            BLE_COMMAND_CHAR_UUID, command_bytes, response=True
         )
 
         # Brief pause, then read status after command.
