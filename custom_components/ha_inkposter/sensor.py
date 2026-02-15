@@ -94,6 +94,11 @@ class InkposterBaseSensor(CoordinatorEntity[InkposterCloudCoordinator], SensorEn
         """Available if we have any cached data."""
         return self.coordinator.data is not None
 
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to coordinator and apply initial data."""
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+
     def _frame_status(self) -> dict[str, Any]:
         """Get the frame_status dict from coordinator data."""
         if self.coordinator.data is None:
