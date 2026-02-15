@@ -151,6 +151,29 @@ def _async_register_services(hass: HomeAssistant) -> None:
                 return entry_id, rd
         raise ValueError("No configured Inkposter integration found")
 
+    async def _trigger_ble_fetch(entry) -> None:
+        """Send BLE FETCH to the device to trigger immediate image pull."""
+        from homeassistant.components import bluetooth
+        from .ble import async_send_command
+        from .const import BLE_ACTION_FETCH
+
+        ble_address = entry.data.get(CONF_BLE_ADDRESS)
+        shared_key = entry.data.get(CONF_SHARED_KEY)
+        if not ble_address:
+            return
+        ble_device = bluetooth.async_ble_device_from_address(
+            hass, ble_address, connectable=True
+        )
+        if ble_device is None:
+            _LOGGER.debug("BLE device %s not reachable for post-upload fetch", ble_address)
+            return
+        try:
+            await async_send_command(
+                ble_device, action=BLE_ACTION_FETCH, skey_hex=shared_key
+            )
+        except Exception:
+            _LOGGER.debug("BLE FETCH after upload failed (non-fatal)", exc_info=True)
+
     async def _handle_upload_image_url(call) -> None:
         url = call.data["url"]
         entry_id, rd = await _resolve_runtime(call)
@@ -167,6 +190,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         await rd.api_client.async_upload_and_poll(
             frame_uuid, image_bytes, "image/jpeg"
         )
+        await _trigger_ble_fetch(entry)
         if rd.cloud_coordinator:
             await rd.cloud_coordinator.async_request_refresh()
 
@@ -183,6 +207,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         await rd.api_client.async_upload_and_poll(
             frame_uuid, image_bytes, "image/jpeg"
         )
+        await _trigger_ble_fetch(entry)
         if rd.cloud_coordinator:
             await rd.cloud_coordinator.async_request_refresh()
 

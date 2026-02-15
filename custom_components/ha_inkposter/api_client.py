@@ -372,17 +372,43 @@ class InkposterApiClient:
 
         return last_response
 
+    async def async_show_image_on_frame(
+        self, frame_uuid: str, item_id: str
+    ) -> None:
+        """Tell the cloud to display a converted item on a frame.
+
+        POST /item/show-on-frame  (confirmed from APK smali: FramesApi @POST("item/show-on-frame"))
+        Body: {"frames": ["<frame-uuid>"], "items": ["<item-uuid>"]}
+        """
+        _LOGGER.debug(
+            "Inkposter: showing item %s on frame %s", item_id, frame_uuid
+        )
+        await self._async_request(
+            "POST",
+            "/item/show-on-frame",
+            json={"frames": [frame_uuid], "items": [item_id]},
+            headers={"Content-Type": "application/json"},
+        )
+
     async def async_upload_and_poll(
         self,
         frame_uuid: str,
         image_bytes: bytes,
         media_type: str = "image/jpeg",
     ) -> dict[str, Any]:
-        """Upload image, then poll until conversion completes."""
+        """Upload image, poll until conversion completes, then show on frame."""
         convert_resp = await self.async_upload_convert(
             frame_uuid, image_bytes, media_type
         )
         queue_id = convert_resp.get("queueId", "")
         if not queue_id:
             return convert_resp
-        return await self.async_poll_is_converted(queue_id)
+
+        poll_resp = await self.async_poll_is_converted(queue_id)
+
+        # Tell the cloud to push the converted image to the frame.
+        item_id = poll_resp.get("item")
+        if item_id:
+            await self.async_show_image_on_frame(frame_uuid, item_id)
+
+        return poll_resp

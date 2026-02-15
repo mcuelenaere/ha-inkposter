@@ -24,11 +24,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    BLE_ACTION_FETCH,
+    CONF_BLE_ADDRESS,
     CONF_FRAME_MODEL,
     CONF_FRAME_NAME,
     CONF_FRAME_RESOLUTION,
     CONF_FRAME_UUID,
     CONF_SERIAL_NUMBER,
+    CONF_SHARED_KEY,
     DOMAIN,
     FRAME_RESOLUTIONS,
 )
@@ -151,8 +154,33 @@ class InkposterMediaPlayer(
             self._frame_uuid, image_bytes, "image/jpeg"
         )
 
+        # Send BLE FETCH to trigger immediate display on the device.
+        await self._async_trigger_ble_fetch()
+
         # Refresh coordinator to pick up new status.
         await self.coordinator.async_request_refresh()
+
+    async def _async_trigger_ble_fetch(self) -> None:
+        """Send BLE FETCH to the device to trigger immediate image pull."""
+        ble_address = self._entry.data.get(CONF_BLE_ADDRESS)
+        shared_key = self._entry.data.get(CONF_SHARED_KEY)
+        if not ble_address:
+            return
+        try:
+            from homeassistant.components import bluetooth
+            from .ble import async_send_command
+
+            ble_device = bluetooth.async_ble_device_from_address(
+                self.hass, ble_address, connectable=True
+            )
+            if ble_device is None:
+                _LOGGER.debug("BLE device %s not reachable for post-upload fetch", ble_address)
+                return
+            await async_send_command(
+                ble_device, action=BLE_ACTION_FETCH, skey_hex=shared_key
+            )
+        except Exception:
+            _LOGGER.debug("BLE FETCH after upload failed (non-fatal)", exc_info=True)
 
     async def _async_load_image(self, media_id: str) -> bytes | None:
         """Load image bytes from a file path or URL."""
