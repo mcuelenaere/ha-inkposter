@@ -238,11 +238,17 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(
         DOMAIN, "upload_image_url", _handle_upload_image_url,
-        schema=vol.Schema({vol.Required("url"): str}),
+        schema=vol.Schema(
+            {vol.Required("url"): str},
+            extra=vol.ALLOW_EXTRA,
+        ),
     )
     hass.services.async_register(
         DOMAIN, "upload_image_data", _handle_upload_image_data,
-        schema=vol.Schema({vol.Required("image_data"): str}),
+        schema=vol.Schema(
+            {vol.Required("image_data"): str},
+            extra=vol.ALLOW_EXTRA,
+        ),
     )
     hass.services.async_register(DOMAIN, "fetch", _handle_fetch)
     hass.services.async_register(DOMAIN, "reboot", _handle_reboot)
