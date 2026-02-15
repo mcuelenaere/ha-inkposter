@@ -202,6 +202,7 @@ class InkposterFetchButton(InkposterBleButton):
 
     _attr_name = "Fetch Image"
     _attr_icon = "mdi:cloud-download"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass, entry, device_info, frame_uuid, ble_address, shared_key) -> None:
         super().__init__(hass, entry, device_info, frame_uuid, ble_address, shared_key)
