@@ -54,7 +54,7 @@ async def async_setup_entry(
         serial_number=serial_number or None,
     )
 
-    sensors: list[InkposterBaseSensor] = [
+    sensors: list[SensorEntity] = [
         InkposterBatterySensor(coordinator, device_info, frame_uuid),
         InkposterBatteryVoltageSensor(coordinator, device_info, frame_uuid),
         InkposterChargingSensor(coordinator, device_info, frame_uuid),
@@ -65,6 +65,13 @@ async def async_setup_entry(
         InkposterImageTransferSensor(coordinator, device_info, frame_uuid),
         InkposterFirmwareUpdateSensor(coordinator, device_info, frame_uuid),
     ]
+
+    # Add BLE diagnostic sensor if BLE coordinator is available.
+    ble_coordinator = runtime_data.ble_coordinator
+    if ble_coordinator is not None:
+        sensors.append(
+            InkposterBleSecureModeSensor(ble_coordinator, device_info, frame_uuid)
+        )
 
     async_add_entities(sensors, update_before_add=False)
 
@@ -337,6 +344,56 @@ class InkposterFirmwareUpdateSensor(InkposterBaseSensor):
             "release_notes": vc.get("releaseNotes") or None,
         }
         super()._handle_coordinator_update()
+
+
+# ---------------------------------------------------------------------------
+# BLE diagnostic sensor (not backed by cloud coordinator)
+# ---------------------------------------------------------------------------
+
+
+class InkposterBleSecureModeSensor(SensorEntity):
+    """Diagnostic sensor showing whether the device is in BLE secure mode."""
+
+    _attr_has_entity_name = True
+    _attr_name = "BLE Secure Mode"
+    _attr_icon = "mdi:shield-lock"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = True  # Polls the BLE coordinator's cached status.
+
+    def __init__(self, ble_coordinator, device_info: DeviceInfo, frame_uuid: str) -> None:
+        self._ble_coordinator = ble_coordinator
+        self._device_info = device_info
+        self._attr_unique_id = f"{frame_uuid}_ble_secure_mode"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return self._device_info
+
+    @property
+    def available(self) -> bool:
+        return self._ble_coordinator.last_ble_status is not None
+
+    async def async_update(self) -> None:
+        from .ble import parse_status_flags
+
+        status = self._ble_coordinator.last_ble_status
+        if status is None:
+            self._attr_native_value = "Unknown"
+            self._attr_extra_state_attributes = {}
+            return
+
+        flags = parse_status_flags(status.status_original)
+        self._attr_native_value = "Enabled" if flags.secure_mode else "Disabled"
+        self._attr_extra_state_attributes = {
+            "secure_mode": flags.secure_mode,
+            "key_seq": status.key_seq,
+            "msg_seq": status.msg_seq,
+            "model": status.model_str,
+            "firmware": f"{status.fw_major}.{status.fw_minor}.{status.fw_build}",
+            "capacity": status.capacity,
+            "wifi_quality": status.wifi_quality,
+            "status_flags_raw": hex(status.status_original),
+        }
 
 
 def _format_bytes(b: int) -> str:
