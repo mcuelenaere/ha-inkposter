@@ -221,12 +221,9 @@ class InkposterBleCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
         change: bluetooth.BluetoothChange,
     ) -> None:
         """Handle an incoming BLE advertisement."""
-        # Just presence detection; actual data comes from active polls.
-        _LOGGER.debug(
-            "BLE advertisement from %s (RSSI=%s)",
-            service_info.address,
-            service_info.rssi,
-        )
+        # Must call super() so ActiveBluetoothDataUpdateCoordinator
+        # triggers its _needs_poll -> _async_update poll chain.
+        super()._async_handle_bluetooth_event(service_info, change)
 
     @callback
     def _async_handle_unavailable(

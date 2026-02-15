@@ -110,6 +110,10 @@ async def async_setup_entry(
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Start the BLE coordinator AFTER platforms have subscribed.
+    if runtime_data.ble_coordinator is not None:
+        entry.async_on_unload(runtime_data.ble_coordinator.async_start())
+
     # Register services (idempotent).
     _async_register_services(hass)
 
