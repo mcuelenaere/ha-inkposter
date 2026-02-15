@@ -296,11 +296,20 @@ async def async_read_status(
 
 async def async_send_command(
     ble_device: Any,
-    command_bytes: bytes,
+    command_bytes: bytes | None = None,
     *,
+    action: int | None = None,
+    extra: dict[str, Any] | None = None,
+    skey_hex: str | None = None,
     timeout: float = BLE_CONNECT_TIMEOUT,
 ) -> BleStatusDecoded | None:
-    """Connect, read status (for msg_seq), send a command, read status again.
+    """Connect, read status (for msg_seq), build + send a command, read status again.
+
+    There are two ways to call this:
+    1. Pass ``action`` (and optionally ``extra``/``skey_hex``) to have the
+       command built with the correct msg_seq read from the device.
+    2. Pass pre-built ``command_bytes`` (legacy; msg_seq won't be correct
+       unless the caller already obtained it).
 
     Returns the post-command status, or None if the read fails.
     """
@@ -316,9 +325,26 @@ async def async_send_command(
         pass
 
     try:
-        # Read status before command (for msg_seq if needed later).
+        # Read status before command to get the current msg_seq.
         raw_before = await client.read_gatt_char(BLE_STATUS_CHAR_UUID)
-        _LOGGER.debug("BLE status before command: %s", raw_before.hex())
+        status_before = decode_status(bytes(raw_before))
+        _LOGGER.debug(
+            "BLE status before command: msg_seq=%d, model=%s",
+            status_before.msg_seq,
+            status_before.model_str,
+        )
+
+        # Build command with correct msg_seq if action is provided.
+        if action is not None:
+            command_bytes = build_json_command(
+                action,
+                extra=extra,
+                msg_seq=status_before.msg_seq,
+                skey_hex=skey_hex,
+            )
+
+        if command_bytes is None:
+            raise ValueError("Either command_bytes or action must be provided")
 
         # Write command (WRITE_TYPE_NO_RESPONSE).
         await client.write_gatt_char(

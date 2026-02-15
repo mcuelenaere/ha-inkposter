@@ -186,7 +186,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         if rd.cloud_coordinator:
             await rd.cloud_coordinator.async_request_refresh()
 
-    async def _handle_ble_command(call, cmd_builder) -> None:
+    async def _handle_ble_action(call, action: int) -> None:
         from homeassistant.components import bluetooth
         from .ble import async_send_command
 
@@ -204,21 +204,22 @@ def _async_register_services(hass: HomeAssistant) -> None:
             if ble_device is None:
                 _LOGGER.warning("BLE device %s not reachable", ble_address)
                 continue
-            command = cmd_builder(skey_hex=shared_key)
-            await async_send_command(ble_device, command)
+            await async_send_command(
+                ble_device, action=action, skey_hex=shared_key
+            )
             break
 
     async def _handle_fetch(call) -> None:
-        from .ble import cmd_fetch
-        await _handle_ble_command(call, cmd_fetch)
+        from .const import BLE_ACTION_FETCH
+        await _handle_ble_action(call, BLE_ACTION_FETCH)
 
     async def _handle_reboot(call) -> None:
-        from .ble import cmd_reboot
-        await _handle_ble_command(call, cmd_reboot)
+        from .const import BLE_ACTION_REBOOT
+        await _handle_ble_action(call, BLE_ACTION_REBOOT)
 
     async def _handle_ghosting_cleaner(call) -> None:
-        from .ble import cmd_ghosting_cleaner
-        await _handle_ble_command(call, cmd_ghosting_cleaner)
+        from .const import BLE_ACTION_GHOSTING_CLEANER
+        await _handle_ble_action(call, BLE_ACTION_GHOSTING_CLEANER)
 
     async def _handle_refresh_status(call) -> None:
         for eid in hass.data.get(DOMAIN, {}):

@@ -173,8 +173,8 @@ class InkposterBleButton(InkposterBaseButton):
         self._ble_address = ble_address
         self._shared_key = shared_key
 
-    async def _async_send_ble_command(self, command_bytes: bytes) -> None:
-        """Send a command to the BLE device."""
+    async def _async_send_ble_action(self, action: int, extra: dict | None = None) -> None:
+        """Send a BLE command by action ID (reads msg_seq from device first)."""
         from homeassistant.components import bluetooth
 
         from .ble import async_send_command
@@ -182,13 +182,19 @@ class InkposterBleButton(InkposterBaseButton):
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass, self._ble_address, connectable=True
         )
+
         if ble_device is None:
             _LOGGER.warning(
                 "BLE device %s not reachable for command", self._ble_address
             )
             return
 
-        await async_send_command(ble_device, command_bytes)
+        await async_send_command(
+            ble_device,
+            action=action,
+            extra=extra,
+            skey_hex=self._shared_key,
+        )
 
 
 class InkposterFetchButton(InkposterBleButton):
@@ -202,10 +208,9 @@ class InkposterFetchButton(InkposterBleButton):
         self._attr_unique_id = f"{frame_uuid}_ble_fetch"
 
     async def async_press(self) -> None:
-        from .ble import cmd_fetch
+        from .const import BLE_ACTION_FETCH
 
-        command = cmd_fetch(skey_hex=self._shared_key)
-        await self._async_send_ble_command(command)
+        await self._async_send_ble_action(BLE_ACTION_FETCH)
 
 
 class InkposterRebootButton(InkposterBleButton):
@@ -220,10 +225,9 @@ class InkposterRebootButton(InkposterBleButton):
         self._attr_unique_id = f"{frame_uuid}_ble_reboot"
 
     async def async_press(self) -> None:
-        from .ble import cmd_reboot
+        from .const import BLE_ACTION_REBOOT
 
-        command = cmd_reboot(skey_hex=self._shared_key)
-        await self._async_send_ble_command(command)
+        await self._async_send_ble_action(BLE_ACTION_REBOOT)
 
 
 class InkposterGhostingCleanerButton(InkposterBleButton):
@@ -237,7 +241,6 @@ class InkposterGhostingCleanerButton(InkposterBleButton):
         self._attr_unique_id = f"{frame_uuid}_ble_ghosting_cleaner"
 
     async def async_press(self) -> None:
-        from .ble import cmd_ghosting_cleaner
+        from .const import BLE_ACTION_GHOSTING_CLEANER
 
-        command = cmd_ghosting_cleaner(skey_hex=self._shared_key)
-        await self._async_send_ble_command(command)
+        await self._async_send_ble_action(BLE_ACTION_GHOSTING_CLEANER)
