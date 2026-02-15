@@ -1,0 +1,19 @@
+{
+  "domain": "ha_inkposter",
+  "name": "Inkposter",
+  "after_dependencies": ["bluetooth"],
+  "bluetooth": [
+    {
+      "connectable": true,
+      "service_uuid": "706218ee-d3d6-46ad-8080-6eefbacf7dbc"
+    }
+  ],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["bluetooth", "bluetooth_adapters"],
+  "documentation": "https://github.com/mcuelenaere/ha-inkposter",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "requirements": ["Pillow", "bleak-retry-connector"],
+  "version": "0.1.0"
+}

@@ -1,0 +1,80 @@
+upload_image_url:
+  name: Upload Image from URL
+  description: >
+    Download an image from a URL, resize it to the frame's resolution,
+    upload it to the Inkposter cloud, and wait for conversion to complete.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields:
+    url:
+      name: Image URL
+      description: Publicly reachable URL of the image to upload
+      required: true
+      example: "https://example.com/picture.jpg"
+      selector:
+        text:
+          type: url
+
+upload_image_data:
+  name: Upload Image Data (Base64)
+  description: >
+    Upload a base64-encoded image to the Inkposter cloud for display on the frame.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields:
+    image_data:
+      name: Image data (base64)
+      description: Base64-encoded image bytes (PNG/JPEG/etc.)
+      required: true
+      selector:
+        text:
+          type: text
+          multiline: true
+
+fetch:
+  name: Fetch Image (BLE)
+  description: >
+    Send a BLE FETCH command (action=42) to tell the device to pull
+    the latest image from the cloud. Requires BLE to be configured.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields: {}
+
+reboot:
+  name: Reboot Device (BLE)
+  description: >
+    Send a BLE REBOOT command (action=3) to restart the device.
+    Requires BLE to be configured.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields: {}
+
+ghosting_cleaner:
+  name: Ghosting Cleaner (BLE)
+  description: >
+    Send a BLE GHOSTING_CLEANER command (action=44) to run the
+    e-ink ghosting cleaner. Requires BLE to be configured.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields: {}
+
+refresh_status:
+  name: Refresh Status (Cloud)
+  description: >
+    Send a REPORT_FRAME_STATUS action via the cloud API to request
+    fresh status data from the device.
+  target:
+    entity:
+      domain: media_player
+      integration: ha_inkposter
+  fields: {}

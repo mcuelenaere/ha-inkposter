@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Inkposter Login",
+        "description": "Enter your Inkposter account credentials.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "select_frame": {
+        "title": "Select Frame",
+        "description": "Choose the Inkposter frame you want to add.",
+        "data": {
+          "frame_uuid": "Frame"
+        }
+      },
+      "ble_discovery": {
+        "title": "Bluetooth Discovery (Optional)",
+        "description": "Select a nearby Inkposter BLE device to enable local commands (fetch, reboot, ghosting cleaner). You can skip this to use cloud-only mode.",
+        "data": {
+          "ble_address": "BLE Device"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Inkposter cloud API.",
+      "invalid_auth": "Invalid email or password.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This frame is already configured.",
+      "no_frames": "No frames found on your Inkposter account.",
+      "not_supported": "This device is not supported."
+    }
+  }
+}
