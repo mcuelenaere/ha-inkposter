@@ -140,12 +140,61 @@ def _async_register_services(hass: HomeAssistant) -> None:
     from .const import (
         CLOUD_ACTION_REPORT_STATUS,
         CONF_BLE_ADDRESS,
+        CONF_FRAME_MODEL,
+        CONF_FRAME_RESOLUTION,
         CONF_FRAME_UUID,
         CONF_SHARED_KEY,
+        FRAME_RESOLUTIONS,
     )
 
     if hass.services.has_service(DOMAIN, "upload_image_url"):
         return  # Already registered.
+
+    def _get_target_resolution(entry) -> tuple[int, int] | None:
+        """Get the target resolution for a frame from its config entry."""
+        model = entry.data.get(CONF_FRAME_MODEL, "")
+        if model in FRAME_RESOLUTIONS:
+            return FRAME_RESOLUTIONS[model]
+        res_str = entry.data.get(CONF_FRAME_RESOLUTION, "")
+        if res_str and "x" in res_str:
+            parts = res_str.split("x")
+            try:
+                return (int(parts[0]), int(parts[1]))
+            except (ValueError, IndexError):
+                pass
+        return None
+
+    async def _resize_image(image_bytes: bytes, entry) -> bytes:
+        """Resize image to the frame's resolution using Pillow (cover fit)."""
+        target = _get_target_resolution(entry)
+        if target is None:
+            return image_bytes
+        target_w, target_h = target
+
+        def _do_resize(data: bytes) -> bytes:
+            from io import BytesIO
+            from PIL import Image
+
+            img = Image.open(BytesIO(data))
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            src_ratio = img.width / img.height
+            tgt_ratio = target_w / target_h
+            if src_ratio > tgt_ratio:
+                new_h = target_h
+                new_w = int(target_h * src_ratio)
+            else:
+                new_w = target_w
+                new_h = int(target_w / src_ratio)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+            left = (new_w - target_w) // 2
+            top = (new_h - target_h) // 2
+            img = img.crop((left, top, left + target_w, top + target_h))
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=95)
+            return buf.getvalue()
+
+        return await hass.async_add_executor_job(_do_resize, image_bytes)
 
     async def _resolve_runtime(call) -> tuple:
         """Find the runtime_data for the targeted entry."""
@@ -191,6 +240,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             resp.raise_for_status()
             image_bytes = await resp.read()
 
+        image_bytes = await _resize_image(image_bytes, entry)
         await rd.api_client.async_upload_and_poll(
             frame_uuid, image_bytes, "image/jpeg"
         )
@@ -207,6 +257,8 @@ def _async_register_services(hass: HomeAssistant) -> None:
         frame_uuid = entry.data.get(CONF_FRAME_UUID) if entry else None
         if not frame_uuid:
             return
+
+        image_bytes = await _resize_image(image_bytes, entry)
 
         await rd.api_client.async_upload_and_poll(
             frame_uuid, image_bytes, "image/jpeg"
