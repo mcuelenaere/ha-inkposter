@@ -17,7 +17,7 @@ CLIENT_SECRET = "t5L1zS3D5CAZOE66afhWy8oPVEkZaB5p"
 
 # Common request headers
 DEFAULT_HEADERS: dict[str, str] = {
-    "x-header-country": "BE",
+    "x-header-country": "US",
     "x-header-language": "en",
     "x-client-id": CLIENT_ID,
     "x-header-clientid": CLIENT_ID,
